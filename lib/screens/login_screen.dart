@@ -1,6 +1,10 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
+import '../services/auth_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,6 +18,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
+  final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
@@ -155,12 +161,49 @@ class _LoginScreenState extends State<LoginScreen> {
                           fontSize: 18,
                         ),
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         if (_formKey.currentState?.validate() ?? false) {
-                          Navigator.pushReplacementNamed(context, '/home');
+                          setState(() => _isLoading = true);
+                          final error = await _authService.signIn(
+                            email: _emailController.text.trim(),
+                            password: _passwordController.text.trim(),
+                          );
+                          setState(() => _isLoading = false);
+                          if (error == null) {
+                            final user = _authService.currentUser;
+                            if (user != null) {
+                              final doc =
+                                  await FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(user.uid)
+                                      .get();
+                              final data = doc.data();
+                              if (data != null) {
+                                Provider.of<UserProvider>(
+                                  context,
+                                  listen: false,
+                                ).updateUser(
+                                  name: data['name'] ?? '',
+                                  email: data['email'] ?? '',
+                                  address: data['address'] ?? '',
+                                  phone: data['phone'] ?? '',
+                                );
+                              }
+                              Navigator.pushReplacementNamed(context, '/home');
+                            }
+                          } else {
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(error)));
+                          }
                         }
                       },
-                      child: const Text('Login'),
+                      child:
+                          _isLoading
+                              ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                              : const Text('Login'),
                     ),
                   ),
                   const SizedBox(height: 24),

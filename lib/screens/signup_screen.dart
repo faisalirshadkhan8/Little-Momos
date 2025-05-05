@@ -1,6 +1,9 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
+import '../services/auth_service.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -20,6 +23,8 @@ class _SignupScreenState extends State<SignupScreen> {
       TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
+  final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
@@ -275,12 +280,41 @@ class _SignupScreenState extends State<SignupScreen> {
                           fontSize: 18,
                         ),
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         if (_formKey.currentState?.validate() ?? false) {
-                          Navigator.pushReplacementNamed(context, '/home');
+                          setState(() => _isLoading = true);
+                          final error = await _authService.signUp(
+                            email: _emailController.text.trim(),
+                            password: _passwordController.text.trim(),
+                            name: _nameController.text.trim(),
+                            address: _addressController.text.trim(),
+                            phone: _phoneController.text.trim(),
+                          );
+                          setState(() => _isLoading = false);
+                          if (error == null) {
+                            Provider.of<UserProvider>(
+                              context,
+                              listen: false,
+                            ).updateUser(
+                              name: _nameController.text.trim(),
+                              email: _emailController.text.trim(),
+                              address: _addressController.text.trim(),
+                              phone: _phoneController.text.trim(),
+                            );
+                            Navigator.pushReplacementNamed(context, '/home');
+                          } else {
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(error)));
+                          }
                         }
                       },
-                      child: const Text('Sign Up'),
+                      child:
+                          _isLoading
+                              ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                              : const Text('Sign Up'),
                     ),
                   ),
                   const SizedBox(height: 24),

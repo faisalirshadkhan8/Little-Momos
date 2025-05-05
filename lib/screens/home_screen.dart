@@ -19,6 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
     'Beverages',
   ];
   int selectedCategory = 0;
+  int _selectedTab = 0;
 
   final List<Map<String, dynamic>> foodItems = [
     {
@@ -48,6 +49,17 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   int cartCount = 0;
+
+  void _onTabTapped(int index) {
+    setState(() {
+      _selectedTab = index;
+    });
+    if (index == 1) {
+      Navigator.pushNamed(context, '/cart');
+    } else if (index == 2) {
+      Navigator.pushNamed(context, '/profile');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -321,50 +333,48 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              // Floating Cart Button
-              Positioned(
-                bottom: 24,
-                right: 24,
-                child: Stack(
-                  alignment: Alignment.topRight,
-                  children: [
-                    FloatingActionButton(
-                      backgroundColor: const Color(0xFFF44336),
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/cart');
-                      },
-                      child: const Icon(
-                        Icons.shopping_cart,
-                        color: Colors.white,
-                      ),
-                    ),
-                    if (cartCount > 0)
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.yellow[700],
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: Text(
-                            '$cartCount',
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: const Color(0xFF4f2f11),
+        selectedItemColor: const Color(0xFFF44336),
+        unselectedItemColor: Colors.white70,
+        currentIndex: _selectedTab,
+        onTap: _onTabTapped,
+        items: [
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(
+            icon: Stack(
+              children: [
+                const Icon(Icons.shopping_cart),
+                if (cartCount > 0)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: CircleAvatar(
+                      radius: 8,
+                      backgroundColor: Colors.yellow,
+                      child: Text(
+                        '$cartCount',
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            label: 'Cart',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
       ),
     );
   }
