@@ -2,6 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'menu_item_details_screen.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
+import '../providers/menu_provider.dart'; // Add this import
+import 'view_order_details_screen.dart';
+import '../providers/cart_provider.dart'; // Add this import
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,59 +18,44 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final List<String> categories = [
     'All',
-    'Veg',
-    'Chicken',
-    'Spicy',
+    'Classic Momos',
+    'Pan Fried Momos',
+    'Spicy Gravy Momos',
+    'Creamy Momos',
+    'Steak Sauce Momos',
+    'Newly Launched Momos',
+    'Noodles',
+    'Soups',
+    'Chinese Entrees',
+    'Chilli Potato',
     'Beverages',
   ];
   int selectedCategory = 0;
-  int _selectedTab = 0;
-
-  final List<Map<String, dynamic>> foodItems = [
-    {
-      'name': 'Classic Veg Momo',
-      'desc': 'Steamed momos stuffed with fresh veggies.',
-      'price': 120,
-      'image': 'assets/food/veg_momo.png',
-    },
-    {
-      'name': 'Chicken Momo',
-      'desc': 'Juicy chicken filling, served hot.',
-      'price': 150,
-      'image': 'assets/food/chicken_momo.png',
-    },
-    {
-      'name': 'Spicy Schezwan Momo',
-      'desc': 'Momos tossed in spicy Schezwan sauce.',
-      'price': 140,
-      'image': 'assets/food/spicy_momo.png',
-    },
-    {
-      'name': 'Iced Lemon Tea',
-      'desc': 'Refreshing beverage to cool you down.',
-      'price': 60,
-      'image': 'assets/food/lemon_tea.png',
-    },
-  ];
-
-  int cartCount = 0;
-
-  void _onTabTapped(int index) {
-    setState(() {
-      _selectedTab = index;
-    });
-    if (index == 1) {
-      Navigator.pushNamed(context, '/cart');
-    } else if (index == 2) {
-      Navigator.pushNamed(context, '/profile');
-    }
-  }
+  int _selectedNavIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final userProvider = Provider.of<UserProvider>(context);
+    final menuProvider = Provider.of<MenuProvider>(context); // Add this
+    final cartProvider = Provider.of<CartProvider>(context); // Add this
+    final cartCount = cartProvider.itemCount; // Use cart provider for count
+    final userName = userProvider.name ?? 'User';
+    final address = userProvider.address ?? 'No address set';
     return Scaffold(
       extendBody: true,
+      appBar: AppBar(
+        title: const Text('Little Momo'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications),
+            tooltip: 'Notifications',
+            onPressed: () {
+              Navigator.pushNamed(context, '/notification_history');
+            },
+          ),
+        ],
+      ),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -83,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: ListView(
                   children: [
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     // Header
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,27 +83,35 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Hi, User!',
-                                style: theme.textTheme.titleLarge?.copyWith(
+                                "Hi $userName",
+                                style: const TextStyle(
                                   fontFamily: 'Roboto',
-                                  color: Colors.white,
                                   fontWeight: FontWeight.bold,
+                                  fontSize: 24,
+                                  color: Colors.white,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 6),
                               Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Icon(
                                     Icons.location_pin,
-                                    color: Colors.white70,
+                                    color: Colors.orange[200],
                                     size: 20,
                                   ),
                                   const SizedBox(width: 4),
-                                  Text(
-                                    '123 Main St',
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: Colors.white70,
-                                      fontFamily: 'Roboto',
+                                  Expanded(
+                                    child: Text(
+                                      address,
+                                      style: const TextStyle(
+                                        fontFamily: 'Roboto',
+                                        color: Colors.white70,
+                                        fontSize: 15,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      softWrap: true,
                                     ),
                                   ),
                                 ],
@@ -121,16 +119,41 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         ),
-                        // Contact Button
-                        IconButton(
-                          icon: const Icon(
-                            Icons.contact_support,
-                            color: Colors.white,
-                          ),
-                          tooltip: 'Contact & Location',
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/contact');
-                          },
+                        // Cart/Notification Icon
+                        Stack(
+                          alignment: Alignment.topRight,
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.shopping_cart_outlined,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                              tooltip: 'Cart',
+                              onPressed:
+                                  () => Navigator.pushNamed(context, '/cart'),
+                            ),
+                            if (cartCount > 0)
+                              Positioned(
+                                right: 6,
+                                top: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    '$cartCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                     ),
@@ -138,10 +161,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Search Bar
                     Material(
                       elevation: 2,
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(28),
                       color: Colors.white.withOpacity(0.10),
                       child: TextField(
-                        style: const TextStyle(color: Colors.white),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'Roboto',
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Search for momos, drinks, or combos…',
                           hintStyle: const TextStyle(
@@ -150,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           prefixIcon: const Icon(
                             Icons.search,
-                            color: Colors.white70,
+                            color: Color(0xFFF44336),
                           ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
@@ -162,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 20),
                     // Category Scroll
                     SizedBox(
-                      height: 44,
+                      height: 48,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: categories.length,
@@ -179,14 +205,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                         : Colors.brown[100],
                                 fontFamily: 'Roboto',
                                 fontWeight: FontWeight.w500,
+                                fontSize: 15,
                               ),
                             ),
                             selected: isSelected,
                             selectedColor: const Color(0xFFF44336),
-                            backgroundColor:
-                                isSelected
-                                    ? const Color(0xFFF44336)
-                                    : Colors.white.withOpacity(0.18),
+                            backgroundColor: Colors.white.withOpacity(0.18),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(24),
                               side:
@@ -206,126 +230,206 @@ class _HomeScreenState extends State<HomeScreen> {
                         },
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    // Food Menu Section
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: foodItems.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
-                      itemBuilder: (context, idx) {
-                        final item = foodItems[idx];
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder:
-                                    (context) => const MenuItemDetailsScreen(),
+                    const SizedBox(height: 28),
+                    // Food Menu Section (Firestore)
+                    StreamBuilder<List<Map<String, dynamic>>>(
+                      // Use menuProvider instead of direct Firestore access
+                      stream:
+                          selectedCategory == 0
+                              ? menuProvider.getMenuItemsStream()
+                              : menuProvider.getMenuItemsByCategoryStream(
+                                categories[selectedCategory],
+                              ),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const Center(
+                            child: Text(
+                              'No menu items found.',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontFamily: 'Roboto',
+                              ),
+                            ),
+                          );
+                        }
+
+                        final allItems = snapshot.data!;
+                        final filteredItems = allItems;
+
+                        return ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: filteredItems.length,
+                          separatorBuilder:
+                              (_, __) => const SizedBox(height: 18),
+                          itemBuilder: (context, index) {
+                            final item = filteredItems[index];
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) =>
+                                            MenuItemDetailsScreen(item: item),
+                                  ),
+                                );
+                              },
+                              child: Card(
+                                elevation: 6,
+                                color: const Color(0xFF502f10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(18),
+                                        child:
+                                            item['imageUrl'] != null &&
+                                                    item['imageUrl']
+                                                        .toString()
+                                                        .isNotEmpty
+                                                ? Image.network(
+                                                  item['imageUrl'],
+                                                  width: 80,
+                                                  height: 80,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder:
+                                                      (
+                                                        context,
+                                                        error,
+                                                        stackTrace,
+                                                      ) => const Icon(
+                                                        Icons.fastfood,
+                                                        color: Colors.white54,
+                                                        size: 40,
+                                                      ),
+                                                )
+                                                : const Icon(
+                                                  Icons.fastfood,
+                                                  color: Colors.white54,
+                                                  size: 40,
+                                                ),
+                                      ),
+                                      const SizedBox(width: 18),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              item['name'] ?? '',
+                                              style: const TextStyle(
+                                                fontFamily: 'Roboto',
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              item['desc'] ??
+                                                  item['description'] ??
+                                                  '',
+                                              style: const TextStyle(
+                                                fontFamily: 'Roboto',
+                                                color: Colors.white70,
+                                                fontSize: 15,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              '₹${(item['price'] ?? 0).toStringAsFixed(2)}',
+                                              style: const TextStyle(
+                                                color: Color(0xFFF44336),
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 17,
+                                                fontFamily: 'Roboto',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          ElevatedButton.icon(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(
+                                                0xFFF44336,
+                                              ),
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                              ),
+                                              elevation: 2,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 14,
+                                                    vertical: 10,
+                                                  ),
+                                              textStyle: const TextStyle(
+                                                fontFamily: 'Roboto',
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            onPressed: () {
+                                              // Add to cart logic implementation
+                                              final customItem = {
+                                                ...item,
+                                                'quantity': 1,
+                                                'spiceLevel': 'Medium',
+                                                'extraCheese': false,
+                                                'totalPrice':
+                                                    (item['price'] as num)
+                                                        .toDouble(),
+                                              };
+                                              cartProvider.addToCart(
+                                                customItem,
+                                              );
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Item added to cart',
+                                                  ),
+                                                  duration: Duration(
+                                                    seconds: 2,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            icon: const Icon(
+                                              Icons.add,
+                                              size: 20,
+                                            ),
+                                            label: const Text('Add'),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             );
                           },
-                          child: Material(
-                            elevation: 3,
-                            borderRadius: BorderRadius.circular(20),
-                            color: const Color(0xFFE79734),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Image.asset(
-                                      item['image'],
-                                      width: 72,
-                                      height: 72,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              Container(
-                                                width: 72,
-                                                height: 72,
-                                                color: Colors.grey[200],
-                                                child: const Icon(
-                                                  Icons.fastfood,
-                                                  color: Colors.grey,
-                                                  size: 32,
-                                                ),
-                                              ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item['name'],
-                                          style: theme.textTheme.titleMedium
-                                              ?.copyWith(
-                                                fontFamily: 'Roboto',
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.black87,
-                                              ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          item['desc'],
-                                          style: theme.textTheme.bodyMedium
-                                              ?.copyWith(
-                                                color: Colors.black54,
-                                                fontFamily: 'Roboto',
-                                              ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          '₹${item['price']}',
-                                          style: theme.textTheme.bodyLarge
-                                              ?.copyWith(
-                                                color: const Color(0xFFF44336),
-                                                fontWeight: FontWeight.bold,
-                                                fontFamily: 'Roboto',
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  SizedBox(
-                                    height: 48,
-                                    width: 48,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFFF44336,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                        ),
-                                        padding: EdgeInsets.zero,
-                                        elevation: 2,
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          cartCount++;
-                                        });
-                                      },
-                                      child: const Icon(
-                                        Icons.add,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
                         );
                       },
                     ),
@@ -333,49 +437,91 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+              // Floating Cart Button
+              Positioned(
+                bottom: 24,
+                right: 24,
+                child: FloatingActionButton.extended(
+                  backgroundColor: const Color(0xFFF44336),
+                  foregroundColor: Colors.white,
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/cart');
+                  },
+                  icon: const Icon(Icons.shopping_cart),
+                  label:
+                      cartCount > 0 ? Text('$cartCount') : const Text('Cart'),
+                  elevation: 6,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color(0xFF4f2f11),
-        selectedItemColor: const Color(0xFFF44336),
-        unselectedItemColor: Colors.white70,
-        currentIndex: _selectedTab,
-        onTap: _onTabTapped,
-        items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Stack(
-              children: [
-                const Icon(Icons.shopping_cart),
-                if (cartCount > 0)
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: CircleAvatar(
-                      radius: 8,
-                      backgroundColor: Colors.yellow,
-                      child: Text(
-                        '$cartCount',
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+      bottomNavigationBar: Theme(
+        data: Theme.of(context).copyWith(
+          iconTheme: const IconThemeData(color: Colors.white),
+          textTheme: Theme.of(context).textTheme.copyWith(
+            bodySmall: const TextStyle(color: Colors.white),
+            bodyMedium: const TextStyle(color: Colors.white),
+            labelMedium: const TextStyle(color: Colors.white),
+          ),
+          colorScheme: Theme.of(context).colorScheme.copyWith(
+            onSurface: Colors.white,
+            onPrimary: Colors.white,
+            surface: const Color(0xFF4f2f11),
+          ),
+        ),
+        child: NavigationBar(
+          selectedIndex: _selectedNavIndex,
+          onDestinationSelected: _onNavBarTap,
+          height: 70,
+          backgroundColor: const Color(0xFF4f2f11),
+          indicatorColor: Colors.white.withOpacity(0.08),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: [
+            const NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
+              label: 'Home',
             ),
-            label: 'Cart',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+            const NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long),
+              label: 'Orders',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  void _onNavBarTap(int index) {
+    setState(() {
+      _selectedNavIndex = index;
+    });
+    switch (index) {
+      case 0:
+        // Home: Already here
+        break;
+      case 1:
+        // Orders
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ViewOrderDetailsScreen()),
+        );
+        break;
+      case 2:
+        // Profile
+        Navigator.pushNamed(context, '/profile');
+        break;
+    }
   }
 }

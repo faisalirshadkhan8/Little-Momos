@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../services/auth_service.dart';
+import '../services/user_token_manager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -168,27 +170,46 @@ class _LoginScreenState extends State<LoginScreen> {
                             email: _emailController.text.trim(),
                             password: _passwordController.text.trim(),
                           );
-                          setState(() => _isLoading = false);
+
                           if (error == null) {
                             final user = _authService.currentUser;
                             if (user != null) {
+                              // Get user data from Firestore
                               final doc =
                                   await FirebaseFirestore.instance
                                       .collection('users')
                                       .doc(user.uid)
                                       .get();
                               final data = doc.data();
+
                               if (data != null) {
-                                Provider.of<UserProvider>(
+                                // Update the user provider
+                                final userProvider = Provider.of<UserProvider>(
                                   context,
                                   listen: false,
-                                ).updateUser(
+                                );
+
+                                userProvider.updateUser(
                                   name: data['name'] ?? '',
                                   email: data['email'] ?? '',
                                   address: data['address'] ?? '',
                                   phone: data['phone'] ?? '',
                                 );
+
+                                // Ensure FCM token is saved and user is initialized
+                                await userProvider.initUserFromAuth();
+                                // Print FCM token for debugging
+                                final token =
+                                    await FirebaseMessaging.instance.getToken();
+                                debugPrint('FCM Token after login: $token');
                               }
+
+                              debugPrint('Calling saveTokenToDatabase');
+                              await Provider.of<UserTokenManager>(
+                                context,
+                                listen: false,
+                              ).saveTokenToDatabase();
+
                               Navigator.pushReplacementNamed(context, '/home');
                             }
                           } else {
@@ -196,6 +217,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               context,
                             ).showSnackBar(SnackBar(content: Text(error)));
                           }
+
+                          setState(() => _isLoading = false);
                         }
                       },
                       child:

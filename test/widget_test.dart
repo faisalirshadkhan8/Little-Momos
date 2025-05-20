@@ -9,11 +9,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:little_momo/main.dart';
+import 'package:little_momo/services/notification_service.dart';
+import 'package:little_momo/services/notification_handler.dart';
+import 'package:little_momo/services/user_token_manager.dart';
+import 'package:little_momo/providers/order_status_provider.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+    // Create mock or fake instances for required dependencies
+    final notificationService = NotificationService();
+    final orderStatusProvider = OrderStatusProvider();
+    final notificationHandler = NotificationHandler(
+      notificationService: notificationService,
+      orderStatusProvider: orderStatusProvider,
+    );
+    final userTokenManager = UserTokenManager();
+
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(
+      MyApp(
+        notificationService: notificationService,
+        orderStatusProvider: orderStatusProvider,
+        notificationHandler: notificationHandler,
+        userTokenManager: userTokenManager,
+      ),
+    );
 
     // Verify that our counter starts at 0.
     expect(find.text('0'), findsOneWidget);

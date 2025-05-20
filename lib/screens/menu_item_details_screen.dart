@@ -1,9 +1,12 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/cart_provider.dart';
 
 class MenuItemDetailsScreen extends StatefulWidget {
-  const MenuItemDetailsScreen({super.key});
+  final Map<String, dynamic> item;
+  const MenuItemDetailsScreen({super.key, required this.item});
 
   @override
   State<MenuItemDetailsScreen> createState() => _MenuItemDetailsScreenState();
@@ -14,22 +17,16 @@ class _MenuItemDetailsScreenState extends State<MenuItemDetailsScreen> {
   String selectedSpice = 'Medium';
   bool extraCheese = false;
 
-  final Map<String, dynamic> item = {
-    'name': 'Spicy Chicken Momo',
-    'tags': ['Spicy', 'Chicken'],
-    'desc':
-        'Juicy chicken momos tossed in spicy Schezwan sauce, served with chutney.',
-    'price': 150,
-    'image': 'assets/food/chicken_momo.png',
-    'ingredients': 'Chicken, flour, spices, Schezwan sauce, herbs',
-  };
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final double totalPrice =
-        (item['price'] as num).toDouble() * quantity +
-        (extraCheese ? 20.0 : 0.0);
+    final item = widget.item;
+    final cartProvider = Provider.of<CartProvider>(context);
+    final double itemPrice =
+        (item['price'] is int)
+            ? (item['price'] as int).toDouble()
+            : (item['price'] as num?)?.toDouble() ?? 0.0;
+    final double totalPrice = itemPrice * quantity + (extraCheese ? 20.0 : 0.0);
     return Scaffold(
       extendBody: true,
       body: Container(
@@ -65,8 +62,9 @@ class _MenuItemDetailsScreenState extends State<MenuItemDetailsScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(28),
-                          child: Image.asset(
-                            item['image'],
+                          child: Image.network(
+                            item['imageUrl'] ??
+                                'https://via.placeholder.com/400x300?text=No+Image',
                             width: double.infinity,
                             height: 220,
                             fit: BoxFit.cover,
@@ -81,6 +79,27 @@ class _MenuItemDetailsScreenState extends State<MenuItemDetailsScreen> {
                                     size: 64,
                                   ),
                                 ),
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                width: double.infinity,
+                                height: 220,
+                                color: Colors.grey[200],
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    value:
+                                        loadingProgress.expectedTotalBytes !=
+                                                null
+                                            ? loadingProgress
+                                                    .cumulativeBytesLoaded /
+                                                loadingProgress
+                                                    .expectedTotalBytes!
+                                            : null,
+                                    color: const Color(0xFFF44336),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
@@ -124,7 +143,7 @@ class _MenuItemDetailsScreenState extends State<MenuItemDetailsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item['name'],
+                          item['name'] ?? 'Menu Item',
                           style: theme.textTheme.headlineMedium?.copyWith(
                             fontFamily: 'Roboto',
                             fontWeight: FontWeight.bold,
@@ -132,34 +151,23 @@ class _MenuItemDetailsScreenState extends State<MenuItemDetailsScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            ...item['tags'].map<Widget>(
-                              (tag) => Padding(
-                                padding: const EdgeInsets.only(right: 8.0),
-                                child: Chip(
-                                  label: Text(
-                                    tag,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontFamily: 'Roboto',
-                                    ),
-                                  ),
-                                  backgroundColor:
-                                      tag == 'Spicy'
-                                          ? const Color(0xFFF44336)
-                                          : Colors.white.withOpacity(0.18),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
-                              ),
+                        // Category chip
+                        Chip(
+                          label: Text(
+                            item['category'] ?? '',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontFamily: 'Roboto',
                             ),
-                          ],
+                          ),
+                          backgroundColor: Colors.white.withOpacity(0.18),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          item['desc'],
+                          item['description'] ?? 'No description available',
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: Colors.white.withOpacity(0.92),
                             fontFamily: 'Roboto',
@@ -167,7 +175,7 @@ class _MenuItemDetailsScreenState extends State<MenuItemDetailsScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Ingredients: ${item['ingredients']}',
+                          'Ingredients: ${item['ingredients'] ?? 'Not specified'}',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: Colors.white70,
                             fontFamily: 'Roboto',
@@ -178,7 +186,7 @@ class _MenuItemDetailsScreenState extends State<MenuItemDetailsScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '₹${item['price']}',
+                              '₹${itemPrice.toInt()}',
                               style: theme.textTheme.headlineSmall?.copyWith(
                                 color: const Color(0xFFF44336),
                                 fontWeight: FontWeight.bold,
@@ -314,7 +322,27 @@ class _MenuItemDetailsScreenState extends State<MenuItemDetailsScreen> {
                           ),
                         ),
                         onPressed: () {
-                          // TODO: Add to cart logic
+                          // Add to cart with customizations
+                          final orderItem = {
+                            ...item,
+                            'quantity': quantity,
+                            'spiceLevel': selectedSpice,
+                            'extraCheese': extraCheese,
+                            'totalPrice': totalPrice,
+                          };
+
+                          cartProvider.addToCart(orderItem);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('${item['name']} added to cart'),
+                              action: SnackBarAction(
+                                label: 'VIEW CART',
+                                onPressed: () {
+                                  Navigator.pushNamed(context, '/cart');
+                                },
+                              ),
+                            ),
+                          );
                         },
                         child: Text('Add to Cart ₹$totalPrice'),
                       ),

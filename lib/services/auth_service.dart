@@ -1,10 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import '../services/user_token_manager.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   // Sign up with email, password, and name
   Future<String?> signUp({
     required String email,
@@ -22,6 +23,7 @@ class AuthService {
       if (user != null) {
         await user.updateDisplayName(name);
         await user.reload();
+
         // Save user info to Firestore
         await _firestore.collection('users').doc(user.uid).set({
           'uid': user.uid,
@@ -29,7 +31,13 @@ class AuthService {
           'email': email,
           'address': address,
           'phone': phone,
+          'fcmTokens': [], // Initialize empty FCM tokens array
           'createdAt': FieldValue.serverTimestamp(),
+          'notificationSettings': {
+            'orderUpdates': true,
+            'promotions': true,
+            'deliveryAlerts': true,
+          },
         });
       }
       return null; // Success

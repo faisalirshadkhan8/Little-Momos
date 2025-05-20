@@ -1,6 +1,8 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/cart_provider.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -10,35 +12,26 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  List<Map<String, dynamic>> cartItems = [
-    {
-      'name': 'Classic Veg Momo',
-      'image': 'assets/food/veg_momo.png',
-      'price': 120,
-      'quantity': 2,
-      'instructions': '',
-    },
-    {
-      'name': 'Chicken Momo',
-      'image': 'assets/food/chicken_momo.png',
-      'price': 150,
-      'quantity': 1,
-      'instructions': '',
-    },
-  ];
-
   double deliveryFee = 30.0;
   double taxRate = 0.05; // 5%
-
-  double get subtotal =>
-      cartItems.fold(0, (sum, item) => sum + item['price'] * item['quantity']);
-  double get tax => subtotal * taxRate;
-  double get total => subtotal + deliveryFee + tax;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cartProvider = Provider.of<CartProvider>(context);
+    final cartItems = cartProvider.items;
+
+    double subtotal = cartProvider.totalAmount;
+    double tax = subtotal * taxRate;
+    double total = subtotal + deliveryFee + tax;
+
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Your Cart', style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF4f2f11),
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
       extendBody: true,
       body: Container(
         width: double.infinity,
@@ -78,24 +71,42 @@ class _CartScreenState extends State<CartScreen> {
                                   children: [
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
-                                      child: Image.asset(
-                                        item['image'],
-                                        width: 56,
-                                        height: 56,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) =>
-                                                Container(
-                                                  width: 56,
-                                                  height: 56,
-                                                  color: Colors.grey[200],
-                                                  child: const Icon(
-                                                    Icons.fastfood,
-                                                    color: Colors.grey,
-                                                    size: 28,
-                                                  ),
+                                      child:
+                                          item['imageUrl'] != null &&
+                                                  item['imageUrl']
+                                                      .toString()
+                                                      .isNotEmpty
+                                              ? Image.network(
+                                                item['imageUrl'],
+                                                width: 56,
+                                                height: 56,
+                                                fit: BoxFit.cover,
+                                                errorBuilder:
+                                                    (
+                                                      context,
+                                                      error,
+                                                      stackTrace,
+                                                    ) => Container(
+                                                      width: 56,
+                                                      height: 56,
+                                                      color: Colors.grey[200],
+                                                      child: const Icon(
+                                                        Icons.fastfood,
+                                                        color: Colors.grey,
+                                                        size: 28,
+                                                      ),
+                                                    ),
+                                              )
+                                              : Container(
+                                                width: 56,
+                                                height: 56,
+                                                color: Colors.grey[200],
+                                                child: const Icon(
+                                                  Icons.fastfood,
+                                                  color: Colors.grey,
+                                                  size: 28,
                                                 ),
-                                      ),
+                                              ),
                                     ),
                                     const SizedBox(width: 16),
                                     Expanded(
@@ -104,7 +115,7 @@ class _CartScreenState extends State<CartScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            item['name'],
+                                            item['name'] ?? '',
                                             style: theme.textTheme.titleMedium
                                                 ?.copyWith(
                                                   fontFamily: 'Roboto',
@@ -112,6 +123,26 @@ class _CartScreenState extends State<CartScreen> {
                                                   color: Colors.black87,
                                                 ),
                                           ),
+                                          const SizedBox(height: 4),
+                                          // Show customizations if any
+                                          if (item['spiceLevel'] != null)
+                                            Text(
+                                              'Spice Level: ${item['spiceLevel']}',
+                                              style: const TextStyle(
+                                                fontFamily: 'Roboto',
+                                                fontSize: 12,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          if (item['extraCheese'] == true)
+                                            const Text(
+                                              'Extra Cheese: Yes (+₹20)',
+                                              style: TextStyle(
+                                                fontFamily: 'Roboto',
+                                                fontSize: 12,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
                                           const SizedBox(height: 8),
                                           Row(
                                             children: [
@@ -125,7 +156,12 @@ class _CartScreenState extends State<CartScreen> {
                                                     item['quantity'] > 1
                                                         ? () {
                                                           setState(() {
-                                                            item['quantity']--;
+                                                            cartProvider
+                                                                .updateQuantity(
+                                                                  idx,
+                                                                  item['quantity'] -
+                                                                      1,
+                                                                );
                                                           });
                                                         }
                                                         : null,
@@ -153,14 +189,17 @@ class _CartScreenState extends State<CartScreen> {
                                                 iconSize: 28,
                                                 onPressed: () {
                                                   setState(() {
-                                                    item['quantity']++;
+                                                    cartProvider.updateQuantity(
+                                                      idx,
+                                                      item['quantity'] + 1,
+                                                    );
                                                   });
                                                 },
                                                 splashRadius: 24,
                                               ),
                                               const Spacer(),
                                               Text(
-                                                '₹${item['price'] * item['quantity']}',
+                                                '₹${item['totalPrice']}',
                                                 style: theme
                                                     .textTheme
                                                     .titleMedium
@@ -180,44 +219,14 @@ class _CartScreenState extends State<CartScreen> {
                                                 color: Colors.grey[600],
                                                 onPressed: () {
                                                   setState(() {
-                                                    cartItems.removeAt(idx);
+                                                    cartProvider.removeItem(
+                                                      idx,
+                                                    );
                                                   });
                                                 },
                                                 splashRadius: 24,
                                               ),
                                             ],
-                                          ),
-                                          const SizedBox(height: 8),
-                                          TextField(
-                                            minLines: 1,
-                                            maxLines: 3,
-                                            style: const TextStyle(
-                                              fontFamily: 'Roboto',
-                                            ),
-                                            decoration: InputDecoration(
-                                              hintText:
-                                                  'Add special instructions (e.g., Less spicy)',
-                                              hintStyle: const TextStyle(
-                                                fontFamily: 'Roboto',
-                                              ),
-                                              filled: true,
-                                              fillColor: Colors.grey[100],
-                                              border: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                borderSide: BorderSide.none,
-                                              ),
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 10,
-                                                  ),
-                                            ),
-                                            onChanged: (val) {
-                                              setState(() {
-                                                item['instructions'] = val;
-                                              });
-                                            },
                                           ),
                                         ],
                                       ),
@@ -425,7 +434,7 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                 ),
                 onPressed: () {
-                  // TODO: Navigate to menu/home
+                  Navigator.pushNamed(context, '/home');
                 },
                 child: const Text('Explore Menu'),
               ),
